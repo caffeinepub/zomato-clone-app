@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Zomato red/coral: #E23744 */
+    --primary: 0.55 0.21 20;
+    --primary-foreground: 1 0 0;
+    /* Zomato green: #3D9B41 */
+    --zomato-green: 0.58 0.15 140;
+    /* Teal header */
+    --zomato-teal: 0.44 0.08 165;
+
+    --background: 0.97 0 0;
+    --foreground: 0.15 0 0;
+    --card: 1 0 0;
+    --card-foreground: 0.15 0 0;
+    --popover: 1 0 0;
+    --popover-foreground: 0.15 0 0;
+    --secondary: 0.94 0 0;
+    --secondary-foreground: 0.25 0 0;
+    --muted: 0.94 0 0;
+    --muted-foreground: 0.5 0 0;
+    --accent: 0.94 0 0;
+    --accent-foreground: 0.25 0 0;
+    --destructive: 0.55 0.21 20;
+    --destructive-foreground: 1 0 0;
+    --border: 0.9 0 0;
+    --input: 0.9 0 0;
+    --ring: 0.55 0.21 20;
+    --radius: 0.75rem;
+    --chart-1: 0.55 0.21 20;
+    --chart-2: 0.58 0.15 140;
+    --chart-3: 0.44 0.08 165;
+    --chart-4: 0.7 0.15 80;
+    --chart-5: 0.65 0.12 200;
+    --sidebar: 0.15 0 0;
+    --sidebar-foreground: 1 0 0;
+    --sidebar-primary: 0.55 0.21 20;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.25 0 0;
+    --sidebar-accent-foreground: 1 0 0;
+    --sidebar-border: 0.25 0 0;
+    --sidebar-ring: 0.55 0.21 20;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Zomato veg/non-veg dot indicator */
+.veg-dot {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #3d9b41;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.veg-dot::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: #3d9b41;
+  border-radius: 50%;
+}
+.nonveg-dot {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #963b2c;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nonveg-dot::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: #963b2c;
+  border-radius: 50%;
+}
+
+/* Rating badge */
+.rating-badge {
+  background: #1a7a3c;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  letter-spacing: -0.2px;
+}
+
+/* Zomato ADD button */
+.add-btn {
+  background: #e8f8e8;
+  border: 1.5px solid #3d9b41;
+  color: #3d9b41;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 5px 16px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+.add-btn-active {
+  background: #3d9b41;
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
