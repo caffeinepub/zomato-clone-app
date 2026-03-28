@@ -1,39 +1,36 @@
-# Zomato Clone App
+# FoodRush - Restaurant Dashboard + Referral System + Push Notifications
 
 ## Current State
-App exists with 6 role-based panels (Customer, Restaurant Owner, Delivery Partner, Sponsor, Admin, Super Admin). The login page shows role cards. Customer home shows generic green UI. Existing pages: CustomerHome, CartPage, OrdersPage, ProductDetail, ProfilePage, RestaurantDashboard, DeliveryDashboard, SponsorDashboard, AdminDashboard, SuperAdminDashboard.
+The app has 6 role-based panels. The restaurant dashboard has 3 tabs: Dashboard (stats + recent orders), Menu (add/edit/delete items), Orders (list with status actions). Notifications panel exists (bell icon, unread badge, mark all read). In-app chat, dark mode, loyalty points, live map tracking, favorites, dietary filters, promo codes, order scheduling, reviews, and loyalty system are all live.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Zomato-exact splash/login screen: black background, 'INDIA'S #1 FOOD DELIVERY APP', zomato logo in red brushstroke, food bag illustration, India flag + +91 phone field, Continue button (red/coral), Google + Email icons, terms text, remember login checkbox
-- Enable notifications screen: white bg, bell illustration with % and chef hat, 'Enable Notifications' red button, 'Not now' outline button
-- Location permission screen: dark overlay, 'Allow Zomato to access location' dialog with Precise/Approximate options
-- Home screen exactly like Zomato: teal/dark green header with location ('Home' with address), GOLD badge, wallet icon, user avatar, search bar with mic icon, VEG MODE toggle, scrolling promo banner (cricket/deals), food category pills with food images (All, Pizza, Burger, Cake...), filter chips (Near & Fast, Under ₹150...), EXPLORE MORE section (Offers, Top 10, Food on train, Collections), IN THE SPOTLIGHT restaurant cards, Delivery/Dining bottom toggle, Blinkit button
-- Restaurant listing page: search bar, category filter pills, restaurant cards with food photo carousel, rating badge (green), delivery time, distance, offer badge (Flat ₹75 OFF), Pure Veg badge, cart bar at bottom ('Royal Cafe & Res... View Menu | View Cart 1 item')
-- Restaurant detail page: back arrow, search, 3-dot menu, Pure Veg badge (green leaf), restaurant name, rating (yellow badge), distance, locality, delivery time with 'Schedule for later' dropdown, 'No packaging charges', offer banner (Flat ₹75 OFF above ₹149), filter chips (Filters, Highly reordered, Spicy), menu sections collapsible, menu items with veg/non-veg dot, name, 'Highly reordered' progress bar, price, bookmark+share icons, ADD button (light green with +), quantity stepper (-1+), 'You will love pairing it with' horizontal scroll, 'Unlock Flat ₹75 OFF' banner at bottom, '1 item added | View cart' green bar
-- Cart page: address warning banner (yellow), 'You saved ₹38', Gold membership upsell, cart items with qty stepper, 'Add more items', note/cutlery options, 'Complete your meal with' suggestions, coupon section, delivery fleet selector (Standard/Veg-only), delivery address with instructions, contact, total bill breakdown, 'PAY USING Paytm UPI' footer, 'Place Order' green button
-- Modals: Schedule delivery time (date tabs, time slots, Confirm green button), Select address (Add Address, saved addresses with Home icon), Filters & Sorting (Sort by price, Top picks, Dietary preference), Coupon popup (% badge, 'Save ₹50 GETOFF50ON99', APPLY green button)
-- Search page: search bar active with mic, category scrollable pills (Pizza underlined in green), free delivery banner, Recommended For You grid (2x3 restaurant cards with offer overlays), ALL RESTAURANTS section
+- **Referral/Invite System** (Customer ProfilePage): unique referral code per user, copy-to-clipboard, share link, referral count tracker, bonus loyalty points when referral is used, a "Refer & Earn" section in profile showing code + progress + rewards
+- **In-App Push Notifications** (toast-style popup): when order status changes (confirmed, preparing, ready, out_for_delivery, delivered) a toast pops up at top of screen with sound emoji; new referral notifications when someone uses your code
+- **Notification bell enhancements**: add referral and order-status notification types to SAMPLE_NOTIFICATIONS
+- **Restaurant Dashboard - Analytics tab**: daily revenue bar chart (last 7 days), top 5 selling items, order status breakdown pie chart, hourly order distribution, total customers count, average order value
+- **Restaurant Dashboard - Reviews tab**: list customer reviews for this restaurant with star ratings, date, customer name, and reply button (owner can post a reply)
+- **Restaurant Dashboard - Settings tab**: edit restaurant profile (name, cuisine, address, opening hours Mon-Sun toggle + time range, min order, delivery time estimate, accept orders toggle - online/offline status)
+- **Restaurant Dashboard - Promotions tab**: create/manage offers (% discount, flat discount, free delivery), set validity dates, toggle active/inactive
+- **Restaurant Dashboard - Orders tab enhancements**: show customer name + phone, estimated prep time input, accept/reject new orders (pending → confirmed or rejected), print order summary button
+- **Restaurant Dashboard - Menu tab enhancements**: toggle item availability inline, mark items as "Best Seller" badge, set item as veg/nonveg toggle, bulk category filter
 
 ### Modify
-- Login page: completely replace with Zomato-exact phone login UI (keep role selection as demo mode toggle or secondary screen)
-- CustomerHome: completely replace with Zomato home UI
-- CartPage: completely replace with Zomato cart UI
-- ProductDetail: replace with restaurant menu page
-- Data: update sample data to match Zomato-style restaurants (Royal Cafe, Burping Bee, Tasty Bites, SVS Food, Foodio, etc.) with realistic Indian food menu items and prices in ₹
+- RestaurantDashboard.tsx: expand from 3 tabs to 7 tabs (Dashboard, Orders, Menu, Analytics, Reviews, Settings, Promotions)
+- AppContext: add referral code per user, referralCount, redeemReferral function, addNotification function for push toasts
+- ProfilePage: add "Refer & Earn" card with referral code, share button, referral count, and earned rewards
+- App.tsx: add global toast notification overlay that listens to recent notifications and shows popups
 
 ### Remove
-- Generic green role-card login screen (replace with Zomato-style phone login)
+- Nothing removed
 
 ## Implementation Plan
-1. Update sampleData.ts with Zomato-style restaurants and menu items (Indian food, ₹ prices)
-2. Rebuild LoginPage.tsx to match Zomato splash+login (phone input, role select hidden behind 'demo' link)
-3. Add NotificationsPrompt screen and onboarding flow
-4. Rebuild CustomerHome.tsx with full Zomato home layout
-5. Add RestaurantList page (search results with filter chips, restaurant cards)
-6. Rebuild RestaurantDetail (was ProductDetail) with full Zomato menu page
-7. Rebuild CartPage with full Zomato cart + modals
-8. Add SearchPage with Zomato search UI
-9. Wire up all navigation (splash -> login -> home -> restaurant -> cart)
-10. Keep other role dashboards (Restaurant Owner, Delivery, etc.) accessible via Profile > Switch Role
+1. Update types.ts to add referralCode to User, add ReferralNotification type
+2. Update AppContext: add referralCode generation, referralCount state, redeemReferral(), addNotification() that pushes to notifications array and triggers toast
+3. Update sampleData: add referral-related notifications
+4. Update ProfilePage: add "Refer & Earn" section with referral code display, copy button, share link, referral count, reward info
+5. Add ToastNotification component: fixed top overlay showing latest notification with auto-dismiss after 3s
+6. Update App.tsx: render ToastNotification, watch notifications for new unread items
+7. Rewrite RestaurantDashboard.tsx: 7-tab layout - Dashboard, Orders (enhanced with accept/reject + customer info), Menu (with availability toggle + best seller + veg toggle), Analytics (charts using recharts/CSS), Reviews (list + reply), Settings (profile edit form), Promotions (offer CRUD)
+8. Validate and build

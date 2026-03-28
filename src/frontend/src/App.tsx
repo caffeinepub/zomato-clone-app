@@ -1,16 +1,13 @@
-import {
-  ClipboardList,
-  Home,
-  ShoppingCart,
-  User,
-  Utensils,
-} from "lucide-react";
+import { ClipboardList, Heart, Home, ShoppingCart, User } from "lucide-react";
 import { useState } from "react";
+import { ChatWidget } from "./components/ChatWidget";
+import { ToastNotification } from "./components/ToastNotification";
 import { AppProvider, useApp } from "./contexts/AppContext";
 import { LoginPage } from "./pages/LoginPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { CartPage } from "./pages/customer/CartPage";
 import { CustomerHome } from "./pages/customer/CustomerHome";
+import { FavoritesPage } from "./pages/customer/FavoritesPage";
 import { OrdersPage } from "./pages/customer/OrdersPage";
 import { ProfilePage } from "./pages/customer/ProfilePage";
 import { RestaurantDetail } from "./pages/customer/RestaurantDetail";
@@ -27,20 +24,24 @@ type CustomerScreen =
   | "restaurant"
   | "cart"
   | "orders"
-  | "profile";
+  | "profile"
+  | "favorites";
 
 function CustomerBottomNav({
   activeTab,
   onTabChange,
   cartCount,
+  favCount,
 }: {
   activeTab: string;
   onTabChange: (t: string) => void;
   cartCount: number;
+  favCount: number;
 }) {
   const tabs = [
     { id: "home", label: "Delivery", icon: Home },
     { id: "orders", label: "Orders", icon: ClipboardList },
+    { id: "favorites", label: "Saved", icon: Heart },
     { id: "cart", label: "Cart", icon: ShoppingCart },
     { id: "profile", label: "Profile", icon: User },
   ];
@@ -60,10 +61,23 @@ function CustomerBottomNav({
               data-ocid={`nav.${tab.id}.link`}
             >
               <div className="relative">
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
+                <Icon
+                  size={19}
+                  strokeWidth={isActive ? 2.5 : 1.8}
+                  className={
+                    tab.id === "favorites" && isActive
+                      ? "fill-red-400 stroke-red-500"
+                      : ""
+                  }
+                />
                 {tab.id === "cart" && cartCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
                     {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+                {tab.id === "favorites" && favCount > 0 && !isActive && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-400 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                    {favCount}
                   </span>
                 )}
               </div>
@@ -79,13 +93,13 @@ function CustomerBottomNav({
           );
         })}
         {/* Blinkit yellow button */}
-        <div className="flex items-center px-2">
+        <div className="flex items-center px-1.5">
           <button
             type="button"
-            className="flex flex-col items-center px-3 py-1.5 rounded-xl text-black font-bold text-[10px] gap-0.5"
+            className="flex flex-col items-center px-2 py-1.5 rounded-xl text-black font-bold text-[9px] gap-0.5"
             style={{ background: "#FFE000" }}
           >
-            <span className="text-lg leading-none">⚡</span>
+            <span className="text-base leading-none">⚡</span>
             <span>Blinkit</span>
           </button>
         </div>
@@ -95,7 +109,7 @@ function CustomerBottomNav({
 }
 
 function AppInner() {
-  const { currentUser, cart } = useApp();
+  const { currentUser, cart, favorites, darkMode } = useApp();
   const [activeTab, setActiveTab] = useState("home");
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
@@ -110,12 +124,14 @@ function AppInner() {
   if (role === "restaurant_owner")
     return (
       <div className="flex flex-col min-h-screen max-w-[430px] mx-auto bg-gray-50">
+        <ToastNotification />
         <RestaurantDashboard />
       </div>
     );
   if (role === "delivery_partner")
     return (
       <div className="flex flex-col min-h-screen max-w-[430px] mx-auto bg-gray-50">
+        <ToastNotification />
         <DeliveryDashboard />
       </div>
     );
@@ -156,7 +172,10 @@ function AppInner() {
   const activeScreen = screen;
 
   return (
-    <div className="flex flex-col min-h-screen max-w-[430px] mx-auto bg-gray-50">
+    <div
+      className={`flex flex-col min-h-screen max-w-[430px] mx-auto ${darkMode ? "bg-gray-900" : "bg-gray-50"}`}
+    >
+      <ToastNotification />
       <div className="flex-1 flex flex-col overflow-hidden">
         {activeScreen === "home" && (
           <CustomerHome
@@ -200,12 +219,16 @@ function AppInner() {
         )}
         {activeScreen === "orders" && <OrdersPage />}
         {activeScreen === "profile" && <ProfilePage />}
+        {activeScreen === "favorites" && (
+          <FavoritesPage onRestaurantClick={handleRestaurantClick} />
+        )}
       </div>
       {activeScreen !== "search" && activeScreen !== "restaurant" && (
         <CustomerBottomNav
           activeTab={activeTab}
           onTabChange={handleTabChange}
           cartCount={cartCount}
+          favCount={favorites.length}
         />
       )}
       {activeScreen === "restaurant" && (
@@ -214,6 +237,7 @@ function AppInner() {
             {[
               { id: "home", label: "Delivery", icon: Home },
               { id: "orders", label: "Orders", icon: ClipboardList },
+              { id: "favorites", label: "Saved", icon: Heart },
               { id: "cart", label: "Cart", icon: ShoppingCart },
               { id: "profile", label: "Profile", icon: User },
             ].map((tab) => {
@@ -227,7 +251,7 @@ function AppInner() {
                   data-ocid={`nav.${tab.id}.link`}
                 >
                   <div className="relative">
-                    <Icon size={20} strokeWidth={1.8} />
+                    <Icon size={19} strokeWidth={1.8} />
                     {tab.id === "cart" && cartCount > 0 && (
                       <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
                         {cartCount > 9 ? "9+" : cartCount}
@@ -238,19 +262,21 @@ function AppInner() {
                 </button>
               );
             })}
-            <div className="flex items-center px-2">
+            <div className="flex items-center px-1.5">
               <button
                 type="button"
-                className="flex flex-col items-center px-3 py-1.5 rounded-xl text-black font-bold text-[10px] gap-0.5"
+                className="flex flex-col items-center px-2 py-1.5 rounded-xl text-black font-bold text-[9px] gap-0.5"
                 style={{ background: "#FFE000" }}
               >
-                <span className="text-lg leading-none">⚡</span>
+                <span className="text-base leading-none">⚡</span>
                 <span>Blinkit</span>
               </button>
             </div>
           </div>
         </div>
       )}
+      {/* Chat support widget - only for customer */}
+      <ChatWidget />
     </div>
   );
 }

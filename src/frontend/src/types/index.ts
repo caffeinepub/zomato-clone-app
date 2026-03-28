@@ -13,6 +13,8 @@ export interface User {
   role: Role;
   phone: string;
   address: string;
+  referralCode?: string;
+  referralCount?: number;
 }
 
 export interface Restaurant {
@@ -27,7 +29,6 @@ export interface Restaurant {
   isApproved: boolean;
   isActive: boolean;
   imageColor: string;
-  // Extended Zomato fields
   distance?: string;
   offer?: string;
   isPureVeg?: boolean;
@@ -42,6 +43,8 @@ export interface NutritionInfo {
   protein: number;
   fat: number;
 }
+
+export type DietaryType = "veg" | "nonveg" | "vegan";
 
 export interface MenuItem {
   id: string;
@@ -59,15 +62,19 @@ export interface MenuItem {
   imageColor: string;
   isVeg?: boolean;
   isHighlyReordered?: boolean;
+  dietaryType?: DietaryType;
+  isBestSeller?: boolean;
 }
 
 export type OrderStatus =
   | "pending"
   | "confirmed"
   | "preparing"
+  | "ready"
   | "out_for_delivery"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "rejected";
 
 export interface OrderItem {
   menuItemId: string;
@@ -87,6 +94,10 @@ export interface Order {
   status: OrderStatus;
   deliveryAddress: string;
   createdAt: string;
+  scheduledTime?: string;
+  customerName?: string;
+  customerPhone?: string;
+  prepTime?: number;
 }
 
 export interface CartItem {
@@ -102,6 +113,44 @@ export interface AdCampaign {
   budget: number;
   impressions: number;
   clicks: number;
+  isActive: boolean;
+  startDate: string;
+  endDate: string;
+}
+
+export interface ReviewReply {
+  reviewId: string;
+  reply: string;
+  repliedAt: string;
+}
+
+export interface Review {
+  id: string;
+  orderId: string;
+  restaurantId: string;
+  customerId: string;
+  customerName: string;
+  rating: number;
+  comment: string;
+  date: string;
+  reply?: ReviewReply;
+}
+
+export interface AppNotification {
+  id: string;
+  message: string;
+  time: string;
+  read: boolean;
+  icon?: string;
+}
+
+export interface RestaurantOffer {
+  id: string;
+  restaurantId: string;
+  title: string;
+  type: "percent" | "flat" | "free_delivery";
+  value: number;
+  minOrder: number;
   isActive: boolean;
   startDate: string;
   endDate: string;

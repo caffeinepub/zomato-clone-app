@@ -1,4 +1,4 @@
-import { Mic, Search, Wallet, X } from "lucide-react";
+import { Bell, Heart, Mic, Search, X } from "lucide-react";
 import { useState } from "react";
 import { Switch } from "../../components/ui/switch";
 import { useApp } from "../../contexts/AppContext";
@@ -14,7 +14,7 @@ const PROMO_BANNERS = [
   {
     id: 1,
     bg: "from-teal-600 to-teal-500",
-    tag: "🏅 IPL MATCH OFFERS",
+    tag: "🎖️ IPL MATCH OFFERS",
     title: "UNLOCK MATCH OFFERS",
     sub: "TAP TO UNLOCK DEALS",
     cities: ["Bangalore", "Hyderabad", "Mumbai"],
@@ -36,21 +36,44 @@ const EXPLORE_MORE = [
   { icon: "🍔", label: "Collections", color: "bg-red-50" },
 ];
 
+type DietaryFilter = "all" | "veg" | "nonveg" | "vegan";
+
 export function CustomerHome({
   onRestaurantClick,
   onSearchOpen,
 }: CustomerHomeProps) {
-  const { currentUser, restaurants } = useApp();
+  const {
+    currentUser,
+    restaurants,
+    favorites,
+    toggleFavorite,
+    notifications,
+    markAllNotificationsRead,
+    darkMode,
+  } = useApp();
   const [vegMode, setVegMode] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const [promoBanner, setPromoBanner] = useState(0);
+  const [dietaryFilter, setDietaryFilter] = useState<DietaryFilter>("all");
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const approvedRestaurants = restaurants.filter(
     (r) => r.isApproved && r.isActive,
   );
-  const filteredRestaurants = vegMode
+
+  let filteredRestaurants = vegMode
     ? approvedRestaurants.filter((r) => r.isPureVeg)
     : approvedRestaurants;
+
+  if (dietaryFilter === "veg") {
+    filteredRestaurants = filteredRestaurants.filter((r) => r.isPureVeg);
+  } else if (dietaryFilter === "nonveg") {
+    filteredRestaurants = filteredRestaurants.filter((r) => !r.isPureVeg);
+  } else if (dietaryFilter === "vegan") {
+    filteredRestaurants = filteredRestaurants.filter((r) => r.isPureVeg);
+  }
 
   const catFiltered =
     activeCategory === "all"
@@ -68,9 +91,19 @@ export function CustomerHome({
 
   const banner = PROMO_BANNERS[promoBanner];
 
+  const openNotifications = () => {
+    setShowNotifications(true);
+    markAllNotificationsRead();
+  };
+
+  const bg = darkMode ? "bg-gray-900" : "bg-gray-50";
+  const cardBg = darkMode ? "bg-gray-800" : "bg-white";
+  const textPrimary = darkMode ? "text-white" : "text-gray-900";
+  const textSecondary = darkMode ? "text-gray-300" : "text-gray-500";
+
   return (
     <div
-      className="flex-1 overflow-y-auto bg-gray-50"
+      className={`flex-1 overflow-y-auto ${bg}`}
       style={{ paddingBottom: "80px" }}
     >
       {/* Teal Header */}
@@ -105,8 +138,19 @@ export function CustomerHome({
               <span>👑</span>
               <span>GOLD ₹1</span>
             </div>
-            <button type="button" className="text-white">
-              <Wallet size={20} />
+            {/* Notification bell */}
+            <button
+              type="button"
+              className="relative text-white"
+              onClick={openNotifications}
+              data-ocid="home.notifications.button"
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                  {unreadCount}
+                </span>
+              )}
             </button>
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
@@ -142,7 +186,7 @@ export function CustomerHome({
         </div>
       </div>
 
-      {/* Content pulled up to overlap header */}
+      {/* Content pulled up */}
       <div className="-mt-10 px-4">
         {/* Veg mode banner */}
         {vegMode && (
@@ -207,6 +251,32 @@ export function CustomerHome({
           </div>
         </div>
 
+        {/* Dietary filter chips */}
+        <div className="flex gap-2 mb-3">
+          {(
+            [
+              { id: "all", label: "All 🍽️" },
+              { id: "veg", label: "Veg 🌱" },
+              { id: "nonveg", label: "Non-Veg 🍗" },
+              { id: "vegan", label: "Vegan 🥗" },
+            ] as { id: DietaryFilter; label: string }[]
+          ).map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setDietaryFilter(f.id)}
+              className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                dietaryFilter === f.id
+                  ? "bg-green-600 text-white shadow-sm"
+                  : `${cardBg} border border-gray-200 ${textSecondary}`
+              }`}
+              data-ocid={`home.dietary.${f.id}.tab`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
         {/* Food categories */}
         <div className="mb-1">
           <div className="flex items-center gap-2 mb-2">
@@ -226,7 +296,7 @@ export function CustomerHome({
                   className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition-all ${
                     activeCategory === cat.id
                       ? "shadow-md scale-105"
-                      : "bg-white shadow-sm"
+                      : `${cardBg} shadow-sm`
                   }`}
                   style={
                     activeCategory === cat.id
@@ -238,7 +308,7 @@ export function CustomerHome({
                 </div>
                 <span
                   className={`text-[10px] font-semibold ${
-                    activeCategory === cat.id ? "text-red-500" : "text-gray-600"
+                    activeCategory === cat.id ? "text-red-500" : textSecondary
                   }`}
                 >
                   {cat.label}
@@ -260,7 +330,7 @@ export function CustomerHome({
             <button
               key={chip}
               type="button"
-              className="flex-shrink-0 bg-white border border-gray-200 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700 shadow-xs"
+              className={`flex-shrink-0 ${cardBg} border border-gray-200 rounded-full px-3 py-1.5 text-xs font-medium ${textSecondary} shadow-xs`}
             >
               {chip}
             </button>
@@ -269,7 +339,9 @@ export function CustomerHome({
 
         {/* Explore More */}
         <div className="mb-4">
-          <h3 className="font-black text-sm text-gray-700 tracking-wider mb-2">
+          <h3
+            className={`font-black text-sm ${textPrimary} tracking-wider mb-2`}
+          >
             EXPLORE MORE
           </h3>
           <div className="grid grid-cols-4 gap-2">
@@ -290,7 +362,9 @@ export function CustomerHome({
 
         {/* In the Spotlight */}
         <div className="mb-4">
-          <h3 className="font-black text-sm text-gray-700 tracking-wider mb-2">
+          <h3
+            className={`font-black text-sm ${textPrimary} tracking-wider mb-2`}
+          >
             IN THE SPOTLIGHT
           </h3>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
@@ -299,9 +373,8 @@ export function CustomerHome({
                 key={r.id}
                 type="button"
                 onClick={() => onRestaurantClick(r)}
-                className="flex-shrink-0 w-44 bg-white rounded-2xl overflow-hidden shadow-sm text-left"
+                className={`flex-shrink-0 w-44 ${cardBg} rounded-2xl overflow-hidden shadow-sm text-left`}
               >
-                {/* Food image */}
                 <div className="relative">
                   {r.heroImage ? (
                     <img
@@ -318,19 +391,31 @@ export function CustomerHome({
                   )}
                   <button
                     type="button"
-                    className="absolute top-2 right-2 text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(r.id);
+                    }}
+                    className="absolute top-2 right-2"
+                    data-ocid="home.spotlight.favorite.toggle"
                   >
-                    🔖
+                    <Heart
+                      size={18}
+                      className={
+                        favorites.includes(r.id)
+                          ? "fill-red-500 stroke-red-500"
+                          : "fill-white/60 stroke-white"
+                      }
+                    />
                   </button>
                   <div className="rating-badge absolute bottom-2 left-2">
                     {r.rating} ★
                   </div>
                 </div>
                 <div className="p-2">
-                  <p className="font-bold text-xs text-gray-900 truncate">
+                  <p className={`font-bold text-xs ${textPrimary} truncate`}>
                     {r.name}
                   </p>
-                  <p className="text-[10px] text-gray-400">
+                  <p className={`text-[10px] ${textSecondary}`}>
                     {r.deliveryTime} · {r.distance ?? "2 km"}
                   </p>
                   {r.offer && (
@@ -354,66 +439,88 @@ export function CustomerHome({
 
         {/* All Restaurants */}
         <div className="mb-4">
-          <h3 className="font-black text-sm text-gray-700 tracking-wider mb-3">
+          <h3
+            className={`font-black text-sm ${textPrimary} tracking-wider mb-3`}
+          >
             ALL RESTAURANTS ({catFiltered.length})
           </h3>
           <div className="flex flex-col gap-3">
             {catFiltered.map((r, idx) => (
-              <button
+              <div
                 key={r.id}
-                type="button"
-                onClick={() => onRestaurantClick(r)}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm text-left"
+                className={`${cardBg} rounded-2xl overflow-hidden shadow-sm relative`}
                 data-ocid={`restaurants.item.${idx + 1}`}
               >
-                {r.heroImage ? (
-                  <img
-                    src={r.heroImage}
-                    alt={r.name}
-                    className="w-full h-40 object-cover"
-                  />
-                ) : (
-                  <div
-                    className={`w-full h-40 bg-gradient-to-br ${r.imageColor} flex items-center justify-center text-7xl`}
-                  >
-                    {r.imageEmoji ?? "🍴"}
-                  </div>
-                )}
-                <div className="p-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-sm text-gray-900">
-                          {r.name}
-                        </p>
-                        {r.isPureVeg && (
-                          <span className="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded">
-                            PURE VEG
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {r.cuisineType}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {r.deliveryTime} · {r.distance ?? "2 km"} · ₹
-                        {r.minOrder} min order
-                      </p>
-                    </div>
-                    <div className="rating-badge ml-2 flex-shrink-0">
-                      {r.rating} ★
-                    </div>
-                  </div>
-                  {r.offer && (
-                    <div className="mt-2 flex items-center gap-1.5 bg-blue-50 rounded-lg px-2 py-1.5">
-                      <span className="text-blue-500 text-xs">⚙️</span>
-                      <span className="text-blue-700 text-xs font-semibold">
-                        {r.offer}
-                      </span>
+                <button
+                  type="button"
+                  onClick={() => onRestaurantClick(r)}
+                  className="w-full text-left"
+                >
+                  {r.heroImage ? (
+                    <img
+                      src={r.heroImage}
+                      alt={r.name}
+                      className="w-full h-40 object-cover"
+                    />
+                  ) : (
+                    <div
+                      className={`w-full h-40 bg-gradient-to-br ${r.imageColor} flex items-center justify-center text-7xl`}
+                    >
+                      {r.imageEmoji ?? "🍴"}
                     </div>
                   )}
-                </div>
-              </button>
+                  <div className="p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className={`font-bold text-sm ${textPrimary}`}>
+                            {r.name}
+                          </p>
+                          {r.isPureVeg && (
+                            <span className="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded">
+                              PURE VEG
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-xs ${textSecondary} mt-0.5`}>
+                          {r.cuisineType}
+                        </p>
+                        <p className={`text-xs ${textSecondary}`}>
+                          {r.deliveryTime} · {r.distance ?? "2 km"} · ₹
+                          {r.minOrder} min order
+                        </p>
+                      </div>
+                      <div className="rating-badge ml-2 flex-shrink-0">
+                        {r.rating} ★
+                      </div>
+                    </div>
+                    {r.offer && (
+                      <div className="mt-2 flex items-center gap-1.5 bg-blue-50 rounded-lg px-2 py-1.5">
+                        <span className="text-blue-500 text-xs">⚙️</span>
+                        <span className="text-blue-700 text-xs font-semibold">
+                          {r.offer}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </button>
+                {/* Heart button */}
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(r.id)}
+                  className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-sm"
+                  data-ocid={`restaurants.item.${idx + 1}.toggle`}
+                >
+                  <Heart
+                    size={15}
+                    className={
+                      favorites.includes(r.id)
+                        ? "fill-red-500 stroke-red-500"
+                        : "stroke-gray-400"
+                    }
+                  />
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -433,6 +540,68 @@ export function CustomerHome({
           </a>
         </p>
       </div>
+
+      {/* Notifications bottom sheet */}
+      {showNotifications && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <button
+            type="button"
+            className="flex-1 bg-black/40"
+            onClick={() => setShowNotifications(false)}
+          />
+          <div
+            className="bg-white rounded-t-3xl px-5 pt-5 pb-8 max-w-[430px] w-full mx-auto"
+            data-ocid="notifications.modal"
+          >
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-base text-gray-900">
+                Notifications
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowNotifications(false)}
+                className="text-gray-400"
+                data-ocid="notifications.close_button"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {notifications.map((n) => (
+                <div
+                  key={n.id}
+                  className={`flex items-start gap-3 p-3 rounded-2xl ${
+                    n.read
+                      ? "bg-gray-50"
+                      : "bg-green-50 border border-green-100"
+                  }`}
+                >
+                  <span className="text-xl flex-shrink-0">
+                    {n.icon ?? "🔔"}
+                  </span>
+                  <div className="flex-1">
+                    <p
+                      className={`text-xs font-medium ${n.read ? "text-gray-500" : "text-gray-800"}`}
+                    >
+                      {n.message}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {new Date(n.time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  {!n.read && (
+                    <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0 mt-1" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

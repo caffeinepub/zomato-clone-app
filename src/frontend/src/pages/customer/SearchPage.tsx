@@ -19,16 +19,19 @@ const FOOD_PILLS = [
   { id: "dessert", label: "Dessert", emoji: "🍮" },
 ];
 
+type DietaryFilter = "all" | "veg" | "nonveg" | "vegan";
+
 export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
-  const { restaurants } = useApp();
+  const { restaurants, cart } = useApp();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [dietaryFilter, setDietaryFilter] = useState<DietaryFilter>("all");
 
   const approvedRestaurants = restaurants.filter(
     (r) => r.isApproved && r.isActive,
   );
 
-  const filtered = approvedRestaurants.filter((r) => {
+  let filtered = approvedRestaurants.filter((r) => {
     const matchQuery =
       !query ||
       r.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -39,10 +42,14 @@ export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
     return matchQuery && matchCat;
   });
 
+  if (dietaryFilter === "veg") filtered = filtered.filter((r) => r.isPureVeg);
+  if (dietaryFilter === "nonveg")
+    filtered = filtered.filter((r) => !r.isPureVeg);
+  if (dietaryFilter === "vegan") filtered = filtered.filter((r) => r.isPureVeg);
+
   const recommended = filtered.slice(0, 4);
   const allRestaurants = filtered;
 
-  const { cart } = useApp();
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
   const cartRestaurant = cart[0]?.menuItem.restaurantName;
 
@@ -71,6 +78,32 @@ export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {/* Dietary filter */}
+        <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto scrollbar-hide">
+          {(
+            [
+              { id: "all", label: "All 🍽️" },
+              { id: "veg", label: "Veg 🌱" },
+              { id: "nonveg", label: "Non-Veg 🍗" },
+              { id: "vegan", label: "Vegan 🥗" },
+            ] as { id: DietaryFilter; label: string }[]
+          ).map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setDietaryFilter(f.id)}
+              className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold border transition-all ${
+                dietaryFilter === f.id
+                  ? "border-green-500 bg-green-50 text-green-700"
+                  : "border-gray-200 text-gray-600"
+              }`}
+              data-ocid={`search.dietary.${f.id}.tab`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
         {/* Category pills */}
         <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
           {FOOD_PILLS.map((p) => (
@@ -93,22 +126,17 @@ export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
 
         {/* Filter chips */}
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
-          {[
-            "Filters ▾",
-            "Paneer",
-            "Regular",
-            "Near & Fast",
-            "Under ₹250",
-            "Items with offers",
-          ].map((f) => (
-            <button
-              key={f}
-              type="button"
-              className="flex-shrink-0 border border-gray-200 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700 bg-white"
-            >
-              {f}
-            </button>
-          ))}
+          {["Filters ▾", "Near & Fast", "Under ₹250", "Items with offers"].map(
+            (f) => (
+              <button
+                key={f}
+                type="button"
+                className="flex-shrink-0 border border-gray-200 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700 bg-white"
+              >
+                {f}
+              </button>
+            ),
+          )}
         </div>
 
         {/* Free delivery banner */}
@@ -119,7 +147,7 @@ export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
           </p>
         </div>
 
-        {/* Recommended for you */}
+        {/* Recommended */}
         {recommended.length > 0 && (
           <div className="mb-4">
             <h3 className="font-black text-xs text-gray-500 tracking-widest px-4 mb-3">
@@ -198,7 +226,6 @@ export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
                   className="bg-white rounded-2xl overflow-hidden shadow-sm text-left"
                   data-ocid={`search.item.${idx + 1}`}
                 >
-                  {/* Image with dots indicator */}
                   <div className="relative">
                     {r.heroImage ? (
                       <img
@@ -220,15 +247,6 @@ export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
                         </p>
                       </div>
                     )}
-                    {/* Dot indicators */}
-                    <div className="absolute bottom-8 right-3 flex gap-1">
-                      {[0, 1, 2].map((i) => (
-                        <div
-                          key={i}
-                          className={`h-1 rounded-full ${i === 0 ? "w-3 bg-white" : "w-1 bg-white/50"}`}
-                        />
-                      ))}
-                    </div>
                   </div>
                   <div className="p-3">
                     <div className="flex items-start justify-between">
@@ -247,8 +265,7 @@ export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
                           {r.cuisineType}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {r.deliveryTime} · {r.distance ?? "2 km"} · ₹
-                          {r.minOrder} min order
+                          {r.deliveryTime} · {r.distance ?? "2 km"}
                         </p>
                       </div>
                       <div className="rating-badge ml-2 flex-shrink-0">
@@ -284,9 +301,6 @@ export function SearchPage({ onBack, onRestaurantClick }: SearchPageProps) {
               data-ocid="search.cart_button"
             >
               View Cart {cartCount} item{cartCount > 1 ? "s" : ""}
-            </button>
-            <button type="button" className="text-gray-400">
-              ✕
             </button>
           </div>
         </div>

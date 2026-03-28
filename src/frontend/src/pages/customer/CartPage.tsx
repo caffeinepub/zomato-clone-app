@@ -7,38 +7,107 @@ interface CartPageProps {
   onOrderPlaced: () => void;
 }
 
-const COUPON_CODE = "GETOFF50ON99";
-const COUPON_DISCOUNT = 38;
+const VALID_COUPONS: Record<
+  string,
+  { type: "percent" | "flat"; value: number; label: string }
+> = {
+  SAVE20: { type: "percent", value: 20, label: "20% OFF" },
+  FIRST50: { type: "flat", value: 50, label: "₹50 OFF" },
+  WELCOME10: { type: "percent", value: 10, label: "10% OFF" },
+  FLAT30: { type: "flat", value: 30, label: "₹30 OFF" },
+  GETOFF50ON99: { type: "flat", value: 38, label: "₹38 OFF" },
+};
 
 const SUGGEST_ITEMS = [
-  { id: "s1", name: "Garlic Bread", price: 79, emoji: "🫓" },
+  { id: "s1", name: "Garlic Bread", price: 79, emoji: "🥖" },
   { id: "s2", name: "Veg Soup", price: 59, emoji: "🍲" },
   { id: "s3", name: "Raita", price: 49, emoji: "🥣" },
   { id: "s4", name: "Cold Drink", price: 40, emoji: "🥤" },
 ];
 
+const SCHEDULE_SLOTS = [
+  "As soon as possible",
+  "30 min from now",
+  "1 hour from now",
+  "1.5 hours from now",
+  "2 hours from now",
+  "2.5 hours from now",
+  "3 hours from now",
+  "3.5 hours from now",
+  "4 hours from now",
+];
+
 export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
-  const { cart, updateCartQty, cartTotal, placeOrder, currentUser } = useApp();
+  const {
+    cart,
+    updateCartQty,
+    cartTotal,
+    placeOrder,
+    currentUser,
+    loyaltyPoints,
+    redeemLoyaltyPoints,
+  } = useApp();
   const [address] = useState(currentUser?.address ?? "12 MG Road, Bangalore");
   const [orderPlaced, setOrderPlaced] = useState(false);
-  const [couponApplied, setCouponApplied] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [couponError, setCouponError] = useState("");
   const [showAddressModal, setShowAddressModal] = useState(false);
-  const [couponModal, setCouponModal] = useState(false);
   const [selectedFleet, setSelectedFleet] = useState<"standard" | "veg">(
     "standard",
   );
+  const [deliveryType, setDeliveryType] = useState<"now" | "schedule">("now");
+  const [scheduledSlot, setScheduledSlot] = useState(SCHEDULE_SLOTS[1]);
+  const [redeemPoints, setRedeemPoints] = useState(false);
 
   const deliveryFee = 29;
   const taxes = Math.round(cartTotal * 0.05);
-  const discount = couponApplied ? COUPON_DISCOUNT : 0;
-  const total = cartTotal + deliveryFee + taxes - discount;
+
+  // Coupon discount
+  let couponDiscount = 0;
+  if (appliedCoupon && VALID_COUPONS[appliedCoupon]) {
+    const c = VALID_COUPONS[appliedCoupon];
+    couponDiscount =
+      c.type === "percent" ? Math.round((cartTotal * c.value) / 100) : c.value;
+  }
+
+  // Loyalty discount
+  const pointsDiscount =
+    redeemPoints && loyaltyPoints >= 100
+      ? Math.floor(loyaltyPoints / 100) * 10
+      : 0;
+
+  const total = Math.max(
+    0,
+    cartTotal + deliveryFee + taxes - couponDiscount - pointsDiscount,
+  );
+
+  const applyCoupon = () => {
+    const code = couponCode.trim().toUpperCase();
+    if (VALID_COUPONS[code]) {
+      setAppliedCoupon(code);
+      setCouponError("");
+    } else {
+      setCouponError(
+        "Invalid coupon code. Try SAVE20, FIRST50, WELCOME10, or FLAT30",
+      );
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+  };
 
   const handlePlaceOrder = () => {
     if (cart.length === 0) return;
+    if (redeemPoints && loyaltyPoints >= 100) redeemLoyaltyPoints();
     placeOrder(
       cart[0].menuItem.restaurantId,
       cart[0].menuItem.restaurantName,
       address,
+      deliveryType === "schedule" ? scheduledSlot : undefined,
     );
     setOrderPlaced(true);
     setTimeout(() => onOrderPlaced(), 2000);
@@ -49,6 +118,11 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
         <div className="text-7xl mb-4">🎉</div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Order Placed!</h2>
+        {deliveryType === "schedule" && (
+          <p className="text-green-600 text-sm font-semibold mb-1">
+            🕒 Scheduled: {scheduledSlot}
+          </p>
+        )}
         <p className="text-gray-500 text-sm">
           Your order is being prepared. Redirecting...
         </p>
@@ -134,12 +208,14 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
             ⚠️ Selected address is far from restaurant location
           </p>
         </div>
-        <div className="bg-blue-50 px-4 py-2.5 flex items-center gap-2">
-          <span className="text-blue-600">🎉</span>
-          <p className="text-xs font-semibold text-blue-700">
-            You saved ₹{COUPON_DISCOUNT} on this order
-          </p>
-        </div>
+        {couponDiscount > 0 && (
+          <div className="bg-blue-50 px-4 py-2.5 flex items-center gap-2">
+            <span className="text-blue-600">🎉</span>
+            <p className="text-xs font-semibold text-blue-700">
+              You saved ₹{couponDiscount} on this order
+            </p>
+          </div>
+        )}
 
         {/* Gold upsell */}
         <div className="mx-4 mt-3 bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
@@ -158,15 +234,12 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
                 Unlimited free delivery + more
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-700"
-              >
-                ADD
-              </button>
-              <span className="text-sm font-bold text-gray-900">₹1</span>
-            </div>
+            <button
+              type="button"
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-700"
+            >
+              ADD
+            </button>
           </div>
         </div>
 
@@ -275,47 +348,120 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
           </div>
         </div>
 
-        {/* Coupon */}
+        {/* ---- Feature 3: Promo Codes ---- */}
         <div className="mx-4 mt-3 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setCouponModal(true)}
-            className="w-full flex items-center justify-between px-4 py-3"
-            data-ocid="cart.coupon_button"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎟️</span>
-              <span className="text-sm font-semibold text-gray-900">
-                {couponApplied
-                  ? `Coupon '${COUPON_CODE}' applied!`
-                  : "Apply Coupon"}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              {couponApplied && (
-                <span
-                  className="text-xs font-semibold"
-                  style={{ color: "#3D9B41" }}
-                >
-                  -₹{COUPON_DISCOUNT}
-                </span>
-              )}
-              <ChevronDown size={16} className="text-gray-400" />
-            </div>
-          </button>
-          {!couponApplied && (
-            <div className="px-4 pb-3">
-              <div className="bg-green-50 rounded-xl px-3 py-2">
-                <p
-                  className="text-xs font-semibold"
-                  style={{ color: "#3D9B41" }}
-                >
-                  🔓 Save extra by applying a coupon
+          <div className="px-4 pt-3 pb-2">
+            <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <span>🎟️</span> Apply Coupon
+            </p>
+          </div>
+          {appliedCoupon ? (
+            <div className="mx-4 mb-3 bg-green-50 rounded-xl px-3 py-2.5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-green-700">
+                  ✅ {appliedCoupon} applied!
                 </p>
+                <p className="text-[10px] text-green-600">
+                  You save ₹{couponDiscount}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={removeCoupon}
+                className="text-xs text-red-500 font-semibold"
+                data-ocid="cart.coupon.delete_button"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="px-4 pb-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="Enter coupon code"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none"
+                  data-ocid="cart.coupon.input"
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+                  style={{ background: "#3D9B41" }}
+                  data-ocid="cart.coupon.submit_button"
+                >
+                  Apply
+                </button>
+              </div>
+              {couponError && (
+                <p
+                  className="text-[10px] text-red-500 mt-1"
+                  data-ocid="cart.coupon.error_state"
+                >
+                  {couponError}
+                </p>
+              )}
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {Object.entries(VALID_COUPONS)
+                  .slice(0, 4)
+                  .map(([code, info]) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => {
+                        setCouponCode(code);
+                        setAppliedCoupon(code);
+                        setCouponError("");
+                      }}
+                      className="text-[9px] bg-green-50 border border-green-200 text-green-700 font-bold px-2 py-0.5 rounded-full"
+                    >
+                      {code}: {info.label}
+                    </button>
+                  ))}
               </div>
             </div>
           )}
         </div>
+
+        {/* ---- Feature 9: Loyalty Points ---- */}
+        {loyaltyPoints >= 100 && (
+          <div className="mx-4 mt-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🏆</span>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-gray-900">
+                  Loyalty Points
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  You have{" "}
+                  <span className="font-bold text-green-600">
+                    {loyaltyPoints} pts
+                  </span>{" "}
+                  = ₹{Math.floor(loyaltyPoints / 100) * 10} discount
+                </p>
+              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={redeemPoints}
+                  onChange={(e) => setRedeemPoints(e.target.checked)}
+                  className="w-4 h-4 accent-green-600"
+                  data-ocid="cart.loyalty.checkbox"
+                />
+                <span className="text-xs font-semibold text-green-700">
+                  Redeem
+                </span>
+              </label>
+            </div>
+            {redeemPoints && (
+              <p className="text-[10px] text-green-600 font-semibold mt-2">
+                ✓ ₹{pointsDiscount} will be deducted from your total
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Fleet selector */}
         <div className="mx-4 mt-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -326,7 +472,11 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
                 key={fleet}
                 type="button"
                 onClick={() => setSelectedFleet(fleet)}
-                className={`rounded-xl p-3 border-2 text-left transition-all ${selectedFleet === fleet ? "border-green-500 bg-green-50" : "border-gray-200"}`}
+                className={`rounded-xl p-3 border-2 text-left transition-all ${
+                  selectedFleet === fleet
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200"
+                }`}
                 data-ocid={`cart.${fleet}_fleet.toggle`}
               >
                 <span className="text-2xl">
@@ -343,6 +493,49 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* ---- Feature 8: Order Scheduling ---- */}
+        <div className="mx-4 mt-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <p className="text-sm font-bold text-gray-900 mb-3">
+            🕒 Delivery Time
+          </p>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {(["now", "schedule"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setDeliveryType(type)}
+                className={`rounded-xl py-2.5 px-3 border-2 text-sm font-semibold transition-all ${
+                  deliveryType === type
+                    ? "border-green-500 bg-green-50 text-green-700"
+                    : "border-gray-200 text-gray-600"
+                }`}
+                data-ocid={`cart.delivery.${type}.toggle`}
+              >
+                {type === "now" ? "⚡ Deliver Now" : "🗓️ Schedule"}
+              </button>
+            ))}
+          </div>
+          {deliveryType === "schedule" && (
+            <div>
+              <p className="text-xs text-gray-500 mb-2">
+                Select delivery slot:
+              </p>
+              <select
+                value={scheduledSlot}
+                onChange={(e) => setScheduledSlot(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none"
+                data-ocid="cart.schedule.select"
+              >
+                {SCHEDULE_SLOTS.slice(1).map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Address */}
@@ -383,13 +576,22 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
               <span>Delivery Fee</span>
               <span>₹{deliveryFee}</span>
             </div>
-            {couponApplied && (
+            {couponDiscount > 0 && (
               <div
                 className="flex justify-between text-sm"
                 style={{ color: "#3D9B41" }}
               >
-                <span>Coupon ({COUPON_CODE})</span>
-                <span>-₹{discount}</span>
+                <span>Coupon ({appliedCoupon})</span>
+                <span>-₹{couponDiscount}</span>
+              </div>
+            )}
+            {pointsDiscount > 0 && (
+              <div
+                className="flex justify-between text-sm"
+                style={{ color: "#3D9B41" }}
+              >
+                <span>Loyalty Points</span>
+                <span>-₹{pointsDiscount}</span>
               </div>
             )}
             <div className="flex justify-between text-sm text-gray-600">
@@ -399,16 +601,13 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
             <div className="border-t border-gray-100 pt-2">
               <div className="flex justify-between font-bold text-gray-900">
                 <span>TO PAY</span>
-                <div className="text-right">
-                  <span className="line-through text-gray-400 text-xs mr-1">
-                    ₹{cartTotal + deliveryFee + taxes}
-                  </span>
-                  <span>₹{total}</span>
-                </div>
+                <span>₹{total}</span>
               </div>
-              <p className="text-xs mt-1" style={{ color: "#3D9B41" }}>
-                🎉 You saved ₹{COUPON_DISCOUNT} on this order!
-              </p>
+              {(couponDiscount > 0 || pointsDiscount > 0) && (
+                <p className="text-xs mt-1" style={{ color: "#3D9B41" }}>
+                  🎉 You saved ₹{couponDiscount + pointsDiscount} on this order!
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -485,9 +684,6 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
               </span>
               <span className="text-gray-400">▶</span>
             </button>
-            <p className="text-xs font-bold text-gray-400 mb-2 tracking-wider">
-              SAVED ADDRESSES
-            </p>
             <button
               type="button"
               onClick={() => setShowAddressModal(false)}
@@ -502,62 +698,8 @@ export function CartPage({ onBack, onOrderPlaced }: CartPageProps) {
                 <div className="flex-1">
                   <p className="text-sm font-bold text-gray-900">Home</p>
                   <p className="text-xs text-gray-500">{address}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">1.2 km away</p>
                 </div>
               </div>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Coupon modal */}
-      {couponModal && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          <button
-            type="button"
-            className="flex-1 bg-black/40"
-            onClick={() => setCouponModal(false)}
-          />
-          <div
-            className="rounded-t-3xl px-5 pt-6 pb-8 max-w-[430px] w-full mx-auto"
-            style={{
-              background: "linear-gradient(180deg,#E3F0FF 0%,#fff 60%)",
-            }}
-            data-ocid="coupon.modal"
-          >
-            <div className="w-10 h-1 bg-blue-200 rounded-full mx-auto mb-5" />
-            <div className="flex justify-center mb-4">
-              <div
-                className="w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black"
-                style={{ background: "#2196F3", color: "white" }}
-              >
-                %
-              </div>
-            </div>
-            <p className="text-center text-[10px] font-bold text-blue-500 tracking-widest mb-2">
-              ✦ EXCLUSIVELY FOR YOU ✦
-            </p>
-            <h3 className="text-center text-xl font-black text-gray-900 mb-1">
-              Save <span className="text-blue-600">₹{COUPON_DISCOUNT}</span> on
-              this order
-            </h3>
-            <p className="text-center text-sm text-gray-600 mb-1">
-              with coupon &apos;<strong>{COUPON_CODE}</strong>&apos;
-            </p>
-            <p className="text-center text-xs text-gray-400 mb-5">
-              Tap on &apos;APPLY&apos; to avail this
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setCouponApplied(true);
-                setCouponModal(false);
-              }}
-              className="w-full py-3.5 rounded-xl font-bold text-white text-sm tracking-wider"
-              style={{ background: "#3D9B41" }}
-              data-ocid="coupon.confirm_button"
-            >
-              APPLY
             </button>
           </div>
         </div>

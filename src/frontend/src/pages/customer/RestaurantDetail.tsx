@@ -1,11 +1,13 @@
 import {
   ArrowLeft,
   Clock,
+  Heart,
   Info,
   Minus,
   MoreVertical,
   Plus,
   Search,
+  Star,
 } from "lucide-react";
 import { useState } from "react";
 import { useApp } from "../../contexts/AppContext";
@@ -26,24 +28,30 @@ function VegDot({ isVeg }: { isVeg?: boolean }) {
 }
 
 type FilterModal = "filters" | "schedule" | null;
+type DietaryFilter = "all" | "veg" | "nonveg" | "vegan";
 
 export function RestaurantDetail({
   restaurant,
   onBack,
   onViewCart,
 }: RestaurantDetailProps) {
-  const { menuItems, cart, addToCart, updateCartQty } = useApp();
+  const {
+    menuItems,
+    cart,
+    addToCart,
+    updateCartQty,
+    favorites,
+    toggleFavorite,
+    reviews,
+  } = useApp();
   const [filterModal, setFilterModal] = useState<FilterModal>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [couponOpen, setCouponOpen] = useState(false);
+  const [dietaryFilter, setDietaryFilter] = useState<DietaryFilter>("all");
 
   const items = menuItems.filter((m) => m.restaurantId === restaurant.id);
-
-  // Group by category
   const categories = [...new Set(items.map((m) => m.category))];
 
-  // cartTotal unused
-  // cartCount unused
   const restaurantCartItems = cart.filter(
     (c) => c.menuItem.restaurantId === restaurant.id,
   );
@@ -56,18 +64,37 @@ export function RestaurantDetail({
     cart.find((c) => c.menuItem.id === itemId)?.quantity ?? 0;
 
   const filteredItems = (catItems: MenuItem[]) => {
+    let result = catItems;
     if (activeFilter === "veg")
-      return catItems.filter((i) => i.isVeg !== false);
-    if (activeFilter === "spicy") return catItems;
+      result = result.filter((i) => i.isVeg !== false);
     if (activeFilter === "reordered")
-      return catItems.filter((i) => i.isHighlyReordered);
-    return catItems;
+      result = result.filter((i) => i.isHighlyReordered);
+    // dietary filter
+    if (dietaryFilter === "veg")
+      result = result.filter(
+        (i) => i.dietaryType === "veg" || i.isVeg !== false,
+      );
+    if (dietaryFilter === "nonveg")
+      result = result.filter(
+        (i) => i.dietaryType === "nonveg" || i.isVeg === false,
+      );
+    if (dietaryFilter === "vegan")
+      result = result.filter((i) => i.dietaryType === "vegan");
+    return result;
   };
 
-  // Suggestion items (different restaurant's popular items)
   const suggestions = menuItems
     .filter((m) => m.restaurantId !== restaurant.id)
     .slice(0, 6);
+
+  const restaurantReviews = reviews.filter(
+    (r) => r.restaurantId === restaurant.id,
+  );
+  const avgRating = restaurantReviews.length
+    ? restaurantReviews.reduce((s, r) => s + r.rating, 0) /
+      restaurantReviews.length
+    : restaurant.rating;
+  const isFav = favorites.includes(restaurant.id);
 
   return (
     <div
@@ -88,6 +115,20 @@ export function RestaurantDetail({
           <Search size={15} className="text-gray-400" />
           <span className="text-sm text-gray-400">Search in menu</span>
         </div>
+        {/* Favorite button in header */}
+        <button
+          type="button"
+          onClick={() => toggleFavorite(restaurant.id)}
+          className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center"
+          data-ocid="restaurant.favorite.toggle"
+        >
+          <Heart
+            size={16}
+            className={
+              isFav ? "fill-red-500 stroke-red-500" : "stroke-gray-500"
+            }
+          />
+        </button>
         <button type="button">
           <MoreVertical size={20} className="text-gray-600" />
         </button>
@@ -129,9 +170,11 @@ export function RestaurantDetail({
           </p>
 
           <div className="flex items-center gap-3 mt-2">
-            <span className="rating-badge">{restaurant.rating} ★</span>
+            <span className="rating-badge">{avgRating.toFixed(1)} ★</span>
             <span className="text-xs text-blue-600 underline font-medium">
-              200+ ratings
+              {restaurantReviews.length > 0
+                ? `${restaurantReviews.length + 200}+ ratings`
+                : "200+ ratings"}
             </span>
           </div>
 
@@ -182,6 +225,32 @@ export function RestaurantDetail({
             </button>
           </div>
         )}
+
+        {/* Dietary filter chips */}
+        <div className="flex gap-2 px-4 pt-3 overflow-x-auto scrollbar-hide">
+          {(
+            [
+              { id: "all", label: "All" },
+              { id: "veg", label: "Veg 🌱" },
+              { id: "nonveg", label: "Non-Veg 🍗" },
+              { id: "vegan", label: "Vegan 🥗" },
+            ] as { id: DietaryFilter; label: string }[]
+          ).map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setDietaryFilter(f.id)}
+              className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-all border ${
+                dietaryFilter === f.id
+                  ? "border-green-500 bg-green-50 text-green-700"
+                  : "border-gray-200 text-gray-600"
+              }`}
+              data-ocid={`restaurant.dietary.${f.id}.tab`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
 
         {/* Filter chips */}
         <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
@@ -244,7 +313,6 @@ export function RestaurantDetail({
                     data-ocid={`menu.item.${item.id}`}
                   >
                     <div className="flex gap-3">
-                      {/* Left: details */}
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 mb-1">
                           <VegDot isVeg={item.isVeg} />
@@ -257,7 +325,6 @@ export function RestaurantDetail({
                         <p className="font-bold text-sm text-gray-900">
                           {item.name}
                         </p>
-
                         {item.isHighlyReordered && (
                           <div className="flex items-center gap-2 my-1">
                             <div
@@ -274,7 +341,6 @@ export function RestaurantDetail({
                             </span>
                           </div>
                         )}
-
                         <p className="text-sm font-bold text-gray-900 mt-1">
                           ₹{item.price}
                         </p>
@@ -283,7 +349,6 @@ export function RestaurantDetail({
                         </p>
                       </div>
 
-                      {/* Right: image + ADD button */}
                       <div className="flex-shrink-0 flex flex-col items-center gap-1">
                         <div
                           className={`w-24 h-20 bg-gradient-to-br ${item.imageColor} rounded-xl flex items-center justify-center text-4xl`}
@@ -301,14 +366,16 @@ export function RestaurantDetail({
                                     : item.category === "Curry"
                                       ? "🍲"
                                       : item.category === "Bread"
-                                        ? "🫓"
+                                        ? "🥖"
                                         : item.category === "Dessert"
                                           ? "🍮"
                                           : item.category === "Cake"
                                             ? "🎂"
                                             : item.category === "Breakfast"
                                               ? "🥘"
-                                              : "🍴"}
+                                              : item.category === "Starter"
+                                                ? "🍿"
+                                                : "🍴"}
                         </div>
                         {qty === 0 ? (
                           <button
@@ -342,7 +409,6 @@ export function RestaurantDetail({
                       </div>
                     </div>
 
-                    {/* "You will love pairing it with" when item is in cart */}
                     {qty > 0 && suggestions.length > 0 && (
                       <div className="mt-3">
                         <p className="text-xs font-semibold text-gray-600 mb-2">
@@ -389,6 +455,92 @@ export function RestaurantDetail({
             </div>
           );
         })}
+
+        {/* Feature 6: Reviews section */}
+        {restaurantReviews.length > 0 && (
+          <div className="px-4 py-5 border-t border-gray-100">
+            <h3 className="font-black text-sm text-gray-900 mb-3">
+              ⭐ Reviews & Ratings
+            </h3>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="text-center">
+                <p className="text-3xl font-black text-gray-900">
+                  {avgRating.toFixed(1)}
+                </p>
+                <div className="flex gap-0.5 justify-center">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={12}
+                      className={
+                        s <= Math.round(avgRating)
+                          ? "fill-yellow-400 stroke-yellow-400"
+                          : "stroke-gray-300"
+                      }
+                    />
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  {restaurantReviews.length + 200}+ ratings
+                </p>
+              </div>
+              <div className="flex-1">
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = restaurantReviews.filter(
+                    (r) => r.rating === star,
+                  ).length;
+                  const pct = restaurantReviews.length
+                    ? (count / restaurantReviews.length) * 100
+                    : 0;
+                  return (
+                    <div key={star} className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[10px] text-gray-500 w-3">
+                        {star}
+                      </span>
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-yellow-400 rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="space-y-3">
+              {restaurantReviews.slice(0, 3).map((review) => (
+                <div key={review.id} className="bg-gray-50 rounded-2xl p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center text-white text-[10px] font-bold">
+                      {review.customerName[0]}
+                    </div>
+                    <span className="text-xs font-semibold text-gray-800">
+                      {review.customerName}
+                    </span>
+                    <div className="flex gap-0.5 ml-auto">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          size={10}
+                          className={
+                            s <= review.rating
+                              ? "fill-yellow-400 stroke-yellow-400"
+                              : "stroke-gray-300"
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600">{review.comment}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    {new Date(review.date).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Floating Menu button */}
@@ -397,14 +549,13 @@ export function RestaurantDetail({
           type="button"
           className="bg-gray-900 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5"
         >
-          🕴️ Menu
+          🧔 Menu
         </button>
       </div>
 
       {/* Bottom sticky bars */}
       {restaurantCartCount > 0 && (
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-4 z-30">
-          {/* Unlock offer bar */}
           <div
             className="rounded-t-xl px-4 py-2 text-center text-xs font-semibold"
             style={{ background: "#FFF8E1", color: "#E65100" }}
@@ -415,7 +566,6 @@ export function RestaurantDetail({
               : "Unlock offers"}{" "}
             — Add more items
           </div>
-          {/* View cart bar */}
           <button
             type="button"
             onClick={onViewCart}
@@ -432,7 +582,7 @@ export function RestaurantDetail({
         </div>
       )}
 
-      {/* Filters bottom sheet */}
+      {/* Filters modal */}
       {filterModal === "filters" && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <button
@@ -445,7 +595,6 @@ export function RestaurantDetail({
             <h3 className="font-bold text-base text-gray-900 mb-4">
               Filters and Sorting
             </h3>
-
             <p className="text-xs font-semibold text-gray-500 mb-2">SORT BY</p>
             <div className="flex gap-2 mb-4">
               {["Price - low to high", "Price - high to low"].map((s) => (
@@ -458,41 +607,6 @@ export function RestaurantDetail({
                 </button>
               ))}
             </div>
-
-            <div className="flex items-center gap-2 mb-4">
-              <span className="veg-dot" />
-              <span className="text-sm font-medium text-gray-700">
-                This restaurant is pure veg
-              </span>
-            </div>
-
-            <p className="text-xs font-semibold text-gray-500 mb-2">
-              TOP PICKS
-            </p>
-            <div className="flex gap-2 mb-4">
-              <button
-                type="button"
-                className="border border-gray-200 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700"
-              >
-                🔄 Highly reordered
-              </button>
-            </div>
-
-            <p className="text-xs font-semibold text-gray-500 mb-2">
-              DIETARY PREFERENCE
-            </p>
-            <div className="flex gap-2 mb-6">
-              {["🌶️ Spicy", "👦 Kid's choice"].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className="border border-gray-200 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700"
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-
             <div className="flex gap-3">
               <button
                 type="button"
@@ -515,7 +629,7 @@ export function RestaurantDetail({
         </div>
       )}
 
-      {/* Schedule Delivery modal */}
+      {/* Schedule modal */}
       {filterModal === "schedule" && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <button
@@ -528,23 +642,6 @@ export function RestaurantDetail({
             <h3 className="font-bold text-base text-gray-900 mb-4">
               Select your delivery time
             </h3>
-
-            <div className="flex gap-3 mb-4">
-              {["29 Mar Tomorrow", "30 Mar Monday"].map((d, i) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border-b-2 transition-colors ${
-                    i === 0
-                      ? "border-green-500 text-green-700"
-                      : "border-transparent text-gray-500"
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-
             <div className="space-y-2 mb-6">
               {["11:30 AM – 12 PM", "12 – 12:30 PM", "12:30 – 1 PM"].map(
                 (slot, i) => (
@@ -563,7 +660,6 @@ export function RestaurantDetail({
                 ),
               )}
             </div>
-
             <button
               type="button"
               onClick={() => setFilterModal(null)}
@@ -592,34 +688,20 @@ export function RestaurantDetail({
             }}
           >
             <div className="w-10 h-1 bg-blue-200 rounded-full mx-auto mb-5" />
-            <div className="flex justify-center mb-4">
-              <div
-                className="w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black"
-                style={{ background: "#2196F3", color: "white" }}
-              >
-                %
-              </div>
-            </div>
-            <p className="text-center text-[10px] font-bold text-blue-500 tracking-widest mb-2">
-              ❖ EXCLUSIVELY FOR YOU ❖
-            </p>
             <h3 className="text-center text-xl font-black text-gray-900 mb-1">
-              Save <span className="text-blue-600">₹50</span> on this order
+              Save on this order
             </h3>
-            <p className="text-center text-sm text-gray-600 mb-1">
-              with coupon &apos;<strong>GETOFF50ON99</strong>&apos;
-            </p>
-            <p className="text-center text-xs text-gray-400 mb-5">
-              Tap on &apos;APPLY&apos; to avail this
+            <p className="text-center text-sm text-gray-600 mb-5">
+              Use codes: SAVE20, FIRST50, WELCOME10, FLAT30
             </p>
             <button
               type="button"
               onClick={() => setCouponOpen(false)}
-              className="w-full py-3.5 rounded-xl font-bold text-white text-sm tracking-wider"
+              className="w-full py-3.5 rounded-xl font-bold text-white text-sm"
               style={{ background: "#3D9B41" }}
               data-ocid="restaurant.coupon.confirm_button"
             >
-              APPLY
+              Got it!
             </button>
           </div>
         </div>

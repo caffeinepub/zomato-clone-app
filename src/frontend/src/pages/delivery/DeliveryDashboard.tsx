@@ -1,5 +1,6 @@
 import { CheckCircle, MapPin, Package, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { LiveMapAnimation } from "../../components/LiveMapAnimation";
 import { useApp } from "../../contexts/AppContext";
 import { SAMPLE_USERS } from "../../data/sampleData";
 
@@ -69,7 +70,11 @@ export function DeliveryDashboard() {
             type="button"
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 text-xs font-semibold capitalize ${activeTab === tab ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-400"}`}
+            className={`flex-1 py-3 text-xs font-semibold capitalize ${
+              activeTab === tab
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-400"
+            }`}
           >
             {tab}
           </button>
@@ -81,7 +86,7 @@ export function DeliveryDashboard() {
           <div className="space-y-3">
             {availableOrders.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-5xl mb-3">🛵</div>
+                <div className="text-5xl mb-3">🛯</div>
                 <p className="text-gray-400 text-sm">
                   No deliveries available right now
                 </p>
@@ -143,9 +148,15 @@ export function DeliveryDashboard() {
                     {activeDelivery.deliveryAddress}
                   </p>
                 </div>
-                <div className="bg-blue-50 rounded-2xl h-32 flex items-center justify-center mb-4">
-                  <p className="text-blue-400 text-sm">🗺️ Map View</p>
+
+                {/* Live Map Animation */}
+                <div className="mb-4">
+                  <LiveMapAnimation
+                    restaurantName={activeDelivery.restaurantName}
+                    deliveryAddress={activeDelivery.deliveryAddress}
+                  />
                 </div>
+
                 <button
                   type="button"
                   onClick={() =>
